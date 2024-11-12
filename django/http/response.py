@@ -9,6 +9,7 @@ import time
 import warnings
 from email.header import Header
 from http.client import responses
+from http import HTTPStatus
 from urllib.parse import urlsplit
 
 from asgiref.sync import async_to_sync, sync_to_async
@@ -746,3 +747,61 @@ class JsonResponse(HttpResponse):
         kwargs.setdefault("content_type", "application/json")
         data = json.dumps(data, cls=encoder, **json_dumps_params)
         super().__init__(content=data, **kwargs)
+
+
+class JsonResponseBase(JsonResponse):
+    """
+    An JsonResponse base class with dictionary-accessed headers intended for use
+    with custom JsonResponse status response classes.
+
+    :param message: Custom str message that can expand on the status code
+      error message.
+    :param status_code: HTTP status_code int that will be provided by the decendant
+      custom JsonResponse status response class.
+    :param response_data params: Additional kwargs passed to the
+      response_data dictionary.
+    """
+    def __init__(self, message: str, status_code: int, **kwargs):
+        http_status = HTTPStatus(status_code)
+        response_data = {
+            'status': http_status.value,
+            'title': http_status.phrase,
+            'message': message,
+        }
+        response_data.update(kwargs)
+        super().__init__(data=response_data, status=status_code)
+
+
+class JsonResponseBadRequest(JsonResponseBase):
+    def __init__(self, message: str, **kwargs):
+        super().__init__(message, status_code=400, **kwargs)
+
+
+class JsonResponseNotFound(JsonResponseBase):
+    def __init__(self, message: str, **kwargs):
+        super().__init__(message, status_code=404, **kwargs)
+
+
+class JsonResponseForbidden(JsonResponseBase):
+    def __init__(self, message: str, **kwargs):
+        super().__init__(message, status_code=403, **kwargs)
+
+
+class JsonResponseUnauthorized(JsonResponseBase):
+    def __init__(self, message: str, **kwargs):
+        super().__init__(message, status_code=401, **kwargs)
+
+
+class JsonResponseOK(JsonResponseBase):
+    def __init__(self, message: str, **kwargs):
+        super().__init__(message, status_code=200, **kwargs)
+
+
+class JsonResponseCreated(JsonResponseBase):
+    def __init__(self, message: str, **kwargs):
+        super().__init__(message, status_code=201, **kwargs)
+
+
+class JsonResponseInternalServerError(JsonResponseBase):
+    def __init__(self, message: str, **kwargs):
+        super().__init__(message, status_code=500, **kwargs)
